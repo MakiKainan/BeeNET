@@ -1,0 +1,6 @@
+{
+  "name": "BeeNET",
+  "description": "Campus Sports Hub for managing and booking facility scheduling, game sessions, and student forums.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

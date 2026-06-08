@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  
+  --color-surface: #f0f2f5;
+  --color-surface-dim: #cbd5e1;
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f9fafb;
+  --color-surface-container: #f3f4f6;
+  --color-surface-container-high: #e5e7eb;
+  --color-surface-container-highest: #d1d5db;
+  --color-on-surface: #111827;
+  --color-on-surface-variant: #4b5563;
+  --color-inverse-surface: #1f2937;
+  --color-inverse-on-surface: #f9fafb;
+  --color-outline: #9ca3af;
+  --color-outline-variant: #d1d5db;
+  --color-surface-tint: #2563eb;
+  
+  --color-primary-brand: #2563eb;
+  --color-primary: #2563eb;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #eff6ff;
+  --color-on-primary-container: #1e40af;
+  --color-inverse-primary: #93c5fd;
+  
+  --color-secondary-brand: #3b82f6;
+  --color-secondary: #3b82f6;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #eff6ff;
+  --color-on-secondary-container: #1d4ed8;
+  
+  --color-tertiary: #1d4ed8;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #dbeafe;
+  --color-on-tertiary-container: #1e40af;
+  
+  --color-error: #dc2626;
+  --color-on-error: #ffffff;
+  --color-error-container: #fee2e2;
+  --color-on-error-container: #991b1b;
+  
+  --color-primary-fixed: #dbeafe;
+  --color-primary-fixed-dim: #93c5fd;
+  --color-on-primary-fixed: #1e3a8a;
+  --color-on-primary-fixed-variant: #1d4ed8;
+  --color-secondary-fixed: #eff6ff;
+  --color-secondary-fixed-dim: #bfdbfe;
+  --color-on-secondary-fixed: #172554;
+  --color-on-secondary-fixed-variant: #1d4ed8;
+  --color-background: #f0f2f5;
+  --color-on-background: #111827;
+  --color-surface-variant: #e5e7eb;
+}
+
+/* Force high-density crisp overrides for the whole app */
+body {
+  background-color: #f0f2f5 !important;
+  font-family: 'Inter', -apple-system, sans-serif !important;
+  color: #111827 !important;
+}
+
+/* Redefine head typography family for true Stages design */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Inter', sans-serif !important;
+  letter-spacing: -0.025em !important;
+  color: #111827 !important;
+}
+
+/* High Density Flat Crisp Modular Layout */
+.glass-card, .glass-panel {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.glass-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+  border-color: #9ca3af !important;
+}
+
+/* Flatten and compress border radius of cells and buttons for dense grid structure */
+.rounded-3xl {
+  border-radius: 6px !important;
+}
+.rounded-2xl {
+  border-radius: 6px !important;
+}
+.rounded-xl {
+  border-radius: 4px !important;
+}
+.rounded-lg {
+  border-radius: 4px !important;
+}
+
+/* Tighten grid structures and gap padding density */
+.gap-8 {
+  gap: 16px !important; /* 16px gap is dense and crisp */
+}
+.gap-6 {
+  gap: 12px !important;
+}
+.space-y-8 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 20px !important;
+}
+.space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 12px !important;
+}
+.p-8 {
+  padding: 16px !important;
+}
+.p-6 {
+  padding: 12px !important;
+}
+.p-5 {
+  padding: 10px !important;
+}
+.py-8 {
+  py: 16px !important;
+}
+.py-6 {
+  py: 12px !important;
+}
+
+/* Inline tag override */
+.tag, .bg-\[\#ffdbcc\], .bg-\[\#d8e2ff\], .bg-\[\#f1f4f9\], .bg-\[\#e0e3e8\] {
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  font-weight: 500 !important;
+  border: 1px solid #bfdbfe !important;
+}
+
+/* Match colors to #2563eb and solid border-color (#d1d5db) dynamically */
+.text-\[\#0059bb\] {
+  color: #2563eb !important;
+}
+.bg-\[\#0059bb\] {
+  background-color: #2563eb !important;
+}
+.bg-gradient-to-b.from-\[\#0059bb\].to-\[\#004493\] {
+  background: #2563eb !important;
+}
+.text-\[\#fe6b00\] {
+  color: #2563eb !important;
+}
+.bg-\[\#fe6b00\] {
+  background-color: #2563eb !important;
+}
+.hover\:bg-\[\#fe6b00\]\/95:hover {
+  background-color: #1d4ed8 !important;
+}
+.bg-\[\#a04100\] {
+  background-color: #2563eb !important;
+}
+.hover\:bg-\[\#a04100\]\/90:hover {
+  background-color: #1d4ed8 !important;
+}
+.text-\[\#a04100\] {
+  color: #2563eb !important;
+}
+.bg-\[\#ffdbcc\]\/45 {
+  background-color: #eff6ff !important;
+}
+.border-\[\#c1c6d7\]\/10, .border-\[\#c1c6d7\]\/15, .border-\[\#c1c6d7\]\/20, .border-\[\#c1c6d7\]\/30, .border-\[\#c1c6d7\]\/40 {
+  border-color: #d1d5db !important;
+}
+
+/* High contrast inputs and text */
+.text-\[\#181c20\] {
+  color: #111827 !important;
+}
+.text-\[\#414754\] {
+  color: #4b5563 !important;
+}
+.text-\[\#717786\] {
+  color: #6b7280 !important;
+}
+.bg-\[\#f1f4f9\] {
+  background-color: #f9fafb !important;
+  border: 1px solid #d1d5db !important;
+}
+.bg-\[\#f1f4f9\]\/40 {
+  background-color: #f9fafb !important;
+}
+.hover\:bg-\[\#ebeef3\]:hover {
+  background-color: #f3f4f6 !important;
+}
+
+/* Sidebar navigation buttons */
+aside nav button {
+  border-radius: 4px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+aside nav button.bg-\[\#fe6b00\] {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Custom Scrollbar to be finer */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0f2f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ensure material icons look neat */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20 !important;
+  font-size: 18px !important;
+}
