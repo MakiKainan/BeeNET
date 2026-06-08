@@ -31,7 +31,7 @@ export default function DashboardView({
   const [newTodoTime, setNewTodoTime] = useState('16:00 - 17:30');
 
   // Find the primary featured basketball pick-up session for the Next Up card
-  const nextUpSession = gameSessions.find(s => s.id === 'ses_2') || gameSessions[0];
+  const nextUpSession = gameSessions[0];
 
   const handleCreateTodo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +40,8 @@ export default function DashboardView({
     setNewTodoTitle('');
     setShowAddTodo(false);
   };
+
+  const todayItems = todoList.filter(t => !t.completed).length;
 
   return (
     <div className="space-y-8 animate-fade-in select-none text-left">
@@ -51,7 +53,11 @@ export default function DashboardView({
             Good morning, {activeUser.name.split(' ')[0]}!
           </h2>
           <p className="text-sm md:text-base text-[#414754] font-medium">
-            You have <span className="text-[#0059bb] font-bold">2 sessions</span> scheduled for today at Anggrek Campus.
+            {todayItems > 0 ? (
+              <>You have <span className="text-[#0059bb] font-bold">{todayItems} task{todayItems > 1 ? 's' : ''}</span> scheduled for today on campus.</>
+            ) : (
+              "Welcome back! You have a clean slate. No scheduled active tasks or matches."
+            )}
           </p>
         </div>
         
@@ -63,7 +69,7 @@ export default function DashboardView({
           </span>
         </div>
       </section>
-
+ 
       {/* Kinetic Bento Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
@@ -156,7 +162,7 @@ export default function DashboardView({
                   Next Up
                 </span>
                 <h3 className="text-xl font-bold font-display mt-2 leading-tight">
-                  {nextUpSession?.title || "Basketball Friendly"}
+                  {nextUpSession?.title || "No Upcoming Matches"}
                 </h3>
               </div>
               <span className="material-symbols-outlined text-[32px] opacity-75">
@@ -167,15 +173,17 @@ export default function DashboardView({
             <div className="space-y-3 text-xs font-semibold">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#ffdbcc]">schedule</span>
-                <span>{nextUpSession?.time || "16:30 - 18:00 (Today)"}</span>
+                <span>{nextUpSession?.time || "Host a match or join one to begin!"}</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#ffdbcc]">location_on</span>
-                <span className="truncate">{nextUpSession?.location || "Anggrek Campus, Hall B"}</span>
+                <span className="truncate">{nextUpSession?.location || "No match location set"}</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#ffdbcc]">group</span>
-                <span>{nextUpSession?.playersJoined || 8}/{nextUpSession?.playersMax || 10} Players Joined</span>
+                <span>
+                  {nextUpSession ? `${nextUpSession.playersJoined}/${nextUpSession.playersMax} Players Joined` : "0 Players Registered"}
+                </span>
               </div>
             </div>
           </div>
@@ -190,6 +198,8 @@ export default function DashboardView({
                   } else {
                     alert('🎉 Joined! Added to your schedule.');
                   }
+                } else {
+                  onNavigateToTab('sessions');
                 }
               }}
               className={`flex-grow font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-md active:scale-95 cursor-pointer ${
@@ -198,12 +208,12 @@ export default function DashboardView({
                   : 'bg-[#fe6b00] hover:bg-[#fe6b00]/95 text-white'
               }`}
             >
-              {nextUpSession?.hasJoined ? 'Already Joined' : 'Join Now'}
+              {nextUpSession ? (nextUpSession.hasJoined ? 'Already Joined' : 'Join Now') : 'Host a Match'}
             </button>
             <button 
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                alert('Copied match link to clipboard!');
+                alert('Copied community student link to clipboard!');
               }}
               className="px-3.5 py-3.5 border border-white/20 hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
             >
@@ -226,41 +236,55 @@ export default function DashboardView({
             </div>
 
             <div className="space-y-1">
-              {forumPosts.slice(0, 2).map((post, idx) => (
-                <div 
-                  key={post.id} 
-                  onClick={() => onSelectPost(post)}
-                  className={`py-4.5 group cursor-pointer text-left transition-colors ${
-                    idx > 0 ? 'border-t border-[#c1c6d7]/35' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <img 
-                      src={post.avatar} 
-                      alt={post.author} 
-                      className="w-8 h-8 rounded-full object-cover border"
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="text-xs font-bold text-[#181c20]">{post.author}</span>
-                    <span className="text-[11px] text-[#717786]">• {post.timeAgo}</span>
+              {forumPosts.length > 0 ? (
+                forumPosts.slice(0, 2).map((post, idx) => (
+                  <div 
+                    key={post.id} 
+                    onClick={() => onSelectPost(post)}
+                    className={`py-4.5 group cursor-pointer text-left transition-colors ${
+                      idx > 0 ? 'border-t border-[#c1c6d7]/35' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <img 
+                        src={post.avatar} 
+                        alt={post.author} 
+                        className="w-8 h-8 rounded-full object-cover border"
+                        referrerPolicy="no-referrer"
+                      />
+                      <span className="text-xs font-bold text-[#181c20]">{post.author}</span>
+                      <span className="text-[11px] text-[#717786]">• {post.timeAgo}</span>
+                    </div>
+                    
+                    <h4 className="font-bold text-sm text-[#181c20] group-hover:text-[#0059bb] transition-colors line-clamp-2">
+                      {post.title}
+                    </h4>
+                    
+                    <div className="flex gap-4 mt-2.5 text-[11px] text-[#414754]/85 font-semibold">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[15px]">forum</span>
+                        {post.comments.length} Replies
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[15px]">thumb_up</span>
+                        {post.upvotes} Votes
+                      </span>
+                    </div>
                   </div>
-                  
-                  <h4 className="font-bold text-sm text-[#181c20] group-hover:text-[#0059bb] transition-colors line-clamp-2">
-                    {post.title}
-                  </h4>
-                  
-                  <div className="flex gap-4 mt-2.5 text-[11px] text-[#414754]/85 font-semibold">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[15px]">forum</span>
-                      {post.comments.length} Replies
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[15px]">thumb_up</span>
-                      {post.upvotes} Votes
-                    </span>
-                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center bg-[#f1f4f9]/30 rounded-xl border border-dashed border-[#c1c6d7] flex flex-col items-center justify-center p-4">
+                  <span className="material-symbols-outlined text-[#717786] text-[36px] mb-2">forum</span>
+                  <p className="text-xs font-bold text-[#181c20]">No discussion threads yet</p>
+                  <p className="text-[11px] text-[#717786] mt-0.5 mb-3">Be the first to share a sports update or ask a question!</p>
+                  <button 
+                    onClick={() => onNavigateToTab('forum')}
+                    className="bg-[#0059bb] hover:bg-[#0059bb]/90 text-white text-[11px] font-bold px-3 py-1.5 rounded"
+                  >
+                    Post on Forum
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -308,30 +332,38 @@ export default function DashboardView({
 
             {/* Tasks list */}
             <div className="space-y-2">
-              {todoList.map((task) => (
-                <div 
-                  key={task.id} 
-                  onClick={() => onToggleTodo(task.id)}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl transition-all border cursor-pointer ${
-                    task.completed 
-                      ? 'bg-[#f1f4f9]/40 border-[#c1c6d7]/10 opacity-60' 
-                      : 'bg-[#f1f4f9] border-[#c1c6d7]/20 border-l-4 border-l-[#fe6b00] hover:bg-[#ebeef3]'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-sm leading-none select-none transition-colors ${
-                    task.completed ? 'text-[#0059bb]' : 'text-[#717786]'
-                  }`}>
-                    {task.completed ? 'check_box' : 'check_box_outline_blank'}
-                  </span>
-                  
-                  <div className="flex-grow">
-                    <p className={`text-xs font-bold text-[#181c20] leading-tight ${task.completed ? 'line-through text-[#717786]' : ''}`}>
-                      {task.title}
-                    </p>
-                    <p className="text-[10px] text-[#717786] mt-0.5">{task.time}</p>
+              {todoList.length > 0 ? (
+                todoList.map((task) => (
+                  <div 
+                    key={task.id} 
+                    onClick={() => onToggleTodo(task.id)}
+                    className={`flex items-center gap-3 p-3.5 rounded-xl transition-all border cursor-pointer ${
+                      task.completed 
+                        ? 'bg-[#f1f4f9]/40 border-[#c1c6d7]/10 opacity-60' 
+                        : 'bg-[#f1f4f9] border-[#c1c6d7]/20 border-l-4 border-l-[#fe6b00] hover:bg-[#ebeef3]'
+                    }`}
+                  >
+                    <span className={`material-symbols-outlined text-sm leading-none select-none transition-colors ${
+                      task.completed ? 'text-[#0059bb]' : 'text-[#717786]'
+                    }`}>
+                      {task.completed ? 'check_box' : 'check_box_outline_blank'}
+                    </span>
+                    
+                    <div className="flex-grow">
+                      <p className={`text-xs font-bold text-[#181c20] leading-tight ${task.completed ? 'line-through text-[#717786]' : ''}`}>
+                        {task.title}
+                      </p>
+                      <p className="text-[10px] text-[#717786] mt-0.5">{task.time}</p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="py-8 text-center bg-[#f1f4f9]/30 rounded-xl border border-dashed border-[#c1c6d7] flex flex-col items-center justify-center p-4">
+                  <span className="material-symbols-outlined text-[#717786] text-[36px] mb-2">assignment_turned_in</span>
+                  <p className="text-xs font-bold text-[#181c20]">Tasks list is empty</p>
+                  <p className="text-[11px] text-[#717786] mt-0.5">Host a session or booking to add tasks, or type custom items above!</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 

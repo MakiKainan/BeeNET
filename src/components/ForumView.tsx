@@ -42,12 +42,7 @@ export default function ForumView({
       return b.replies - a.replies;
     });
 
-  // Hot contributors data matching mockups
-  const topContributors = [
-    { name: "Kevin Sukias", avatar: "K", pts: "2.4k pts", bg: "bg-[#ffdbcc] text-[#7a3000]" },
-    { name: "Richtjhie Hartawan", avatar: "R", pts: "1.8k pts", bg: "bg-[#d8e2ff] text-[#004493]" },
-    { name: "David Sinambela", avatar: "D", pts: "1.2k pts", bg: "bg-[#ffdbcc] text-[#7c2e00]" }
-  ];
+
 
   return (
     <div className="space-y-8 animate-fade-in select-none text-left">
@@ -300,29 +295,7 @@ export default function ForumView({
             </ul>
           </div>
 
-          {/* Top Contributors points scale */}
-          <div className="bg-white px-5 py-4.5 rounded-2xl border border-[#c1c6d7]/20 shadow-2xs">
-            <h4 className="font-bold text-xs text-[#414754] uppercase tracking-wider mb-4">Top Contributors</h4>
-            <div className="space-y-3">
-              {topContributors.map((c) => (
-                <div key={c.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${c.bg}`}>
-                      {c.avatar}
-                    </div>
-                    <span className="font-bold text-[#181c20]">{c.name}</span>
-                  </div>
-                  <span className="font-bold text-[#a04100] bg-[#ffdbcc]/45 px-2 py-0.5 rounded-full">{c.pts}</span>
-                </div>
-              ))}
-            </div>
-            <button 
-              onClick={() => alert("Leaderboard scores refresh every midnight UTC.")}
-              className="w-full mt-4 py-2.5 bg-[#f1f4f9] text-[#0059bb] font-bold text-xs hover:bg-[#d8e2ff] rounded-xl transition-all cursor-pointer"
-            >
-              View Leaderboard
-            </button>
-          </div>
+
 
           {/* Tag cloud widgets */}
           <div className="bg-white p-5 rounded-2xl border border-[#c1c6d7]/20 shadow-2xs text-left">

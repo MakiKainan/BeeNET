@@ -169,10 +169,10 @@ export default function Header({
               
               <div className="space-y-1">
                 {allUsers.map((user) => {
-                  const isCurrent = user.name === activeUser.name;
+                  const isCurrent = user.email === activeUser.email;
                   return (
                     <button
-                      key={user.name}
+                      key={user.email}
                       onClick={() => {
                         onUserChange(user);
                         setDropdownOpen(false);
@@ -200,7 +200,7 @@ export default function Header({
 
               <div className="border-t border-[#c1c6d7]/20 mt-2 pt-2 px-2">
                 <p className="text-[9px] text-[#717786]">
-                  Toggle viewpoints to experience how Fiko, Kevin, or Richtjhie operate within the application.
+                  Toggle viewpoints to experience how Kevin Sukias operates as a Computer Science student, Admin, or Moderator.
                 </p>
               </div>
             </div>

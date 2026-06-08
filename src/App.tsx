@@ -39,24 +39,24 @@ export default function App() {
   
   // Centralized State collections with local persistence fallbacks
   const [forumPosts, setForumPosts] = useState<ForumPost[]>(() => {
-    const saved = localStorage.getItem('beenet_forum_posts');
+    const saved = localStorage.getItem('beenet_forum_posts_clean_v1');
     return saved ? JSON.parse(saved) : INITIAL_POSTS;
   });
 
   const [gameSessions, setGameSessions] = useState<GameSession[]>(() => {
-    const saved = localStorage.getItem('beenet_game_sessions');
+    const saved = localStorage.getItem('beenet_game_sessions_clean_v1');
     return saved ? JSON.parse(saved) : INITIAL_SESSIONS;
   });
 
   const [facilities, setFacilities] = useState<Facility[]>(INITIAL_FACILITIES);
 
   const [todoList, setTodoList] = useState<Task[]>(() => {
-    const saved = localStorage.getItem('beenet_todo_list');
+    const saved = localStorage.getItem('beenet_todo_list_clean_v1');
     return saved ? JSON.parse(saved) : INITIAL_TASKS;
   });
 
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(() => {
-    const saved = localStorage.getItem('beenet_schedule_list');
+    const saved = localStorage.getItem('beenet_schedule_list_clean_v1');
     return saved ? JSON.parse(saved) : INITIAL_SCHEDULE;
   });
 
@@ -71,19 +71,19 @@ export default function App() {
 
   // Synchronize localStorage
   useEffect(() => {
-    localStorage.setItem('beenet_forum_posts', JSON.stringify(forumPosts));
+    localStorage.setItem('beenet_forum_posts_clean_v1', JSON.stringify(forumPosts));
   }, [forumPosts]);
 
   useEffect(() => {
-    localStorage.setItem('beenet_game_sessions', JSON.stringify(gameSessions));
+    localStorage.setItem('beenet_game_sessions_clean_v1', JSON.stringify(gameSessions));
   }, [gameSessions]);
 
   useEffect(() => {
-    localStorage.setItem('beenet_todo_list', JSON.stringify(todoList));
+    localStorage.setItem('beenet_todo_list_clean_v1', JSON.stringify(todoList));
   }, [todoList]);
 
   useEffect(() => {
-    localStorage.setItem('beenet_schedule_list', JSON.stringify(scheduleList));
+    localStorage.setItem('beenet_schedule_list_clean_v1', JSON.stringify(scheduleList));
   }, [scheduleList]);
 
   // Handle Switching student personas (resets local queries safely)
@@ -91,9 +91,9 @@ export default function App() {
     setActiveUser(newUser);
     setSearchQuery('');
     // Dynamically adjust view tab to highlight specific elements matching reference mockups
-    if (newUser.name === "Kevin Sukias") {
+    if (newUser.department === "Computer Science") {
       setCurrentTab('schedule');
-    } else if (newUser.name === "Richtjhie Hartawan") {
+    } else if (newUser.department === "Moderator") {
       setCurrentTab('sessions');
     } else {
       setCurrentTab('dashboard');

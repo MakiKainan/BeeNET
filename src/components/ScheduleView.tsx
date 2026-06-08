@@ -182,67 +182,6 @@ export default function ScheduleView({
             </div>
           </div>
 
-          {/* Location Map Widget */}
-          <div className="bg-white p-5 rounded-3xl border border-[#c1c6d7]/20 shadow-xs text-left">
-            <h4 className="font-bold text-xs text-[#414754] uppercase tracking-wider mb-3 flex justify-between items-center select-none">
-              Nearby Venues
-              <span className="material-symbols-outlined text-sm text-[#717786]">map</span>
-            </h4>
-
-            {/* Simulated map location widget from mokcup */}
-            <div className="relative h-44 rounded-2xl overflow-hidden group shadow-3xs bg-[#ebeef3]">
-              <img 
-                src="https://tempatwisataseru.com/wp-content/uploads/2018/09/Lapangan-Basket-di-Taman-Menteng-via-Tripadvisor.jpg" 
-                alt="University local map" 
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-103"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-              <div className="absolute bottom-3.5 left-3.5 right-3.5 flex justify-between items-end text-white leading-none">
-                <div>
-                  <span className="text-[9px] uppercase font-bold opacity-70 block mb-0.5">Current Venue</span>
-                  <span className="text-xs font-black leading-none">Taman Menteng</span>
-                </div>
-                <a 
-                  href="https://maps.google.com/?q=Taman+Menteng" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-white text-[#0059bb] p-1.5 rounded-lg shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-sm font-bold leading-none">open_in_new</span>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Access practice cards */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-xs text-[#414754] uppercase tracking-wider px-1">Quick Access</h4>
-            
-            <div onClick={() => alert("Showing lesson plans for Tennis Practice")} className="flex items-center gap-3.5 p-4 bg-white rounded-2xl border border-[#c1c6d7]/15 hover:shadow-sm transition-shadow cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-[#ffdbcc] text-[#a04100] flex items-center justify-center">
-                <span className="material-symbols-outlined text-[18px]">sports_tennis</span>
-              </div>
-              <div className="flex-grow">
-                <p className="font-bold text-xs text-[#181c20] leading-none">Tennis Practice</p>
-                <p className="text-[10px] text-[#717786] mt-1 font-semibold">Tomorrow • 09:00 AM</p>
-              </div>
-              <span className="material-symbols-outlined text-[#717786]/40 text-sm">chevron_right</span>
-            </div>
-
-            <div onClick={() => alert("Showing lesson plans for Swim Lanes")} className="flex items-center gap-3.5 p-4 bg-white rounded-2xl border border-[#c1c6d7]/15 hover:shadow-sm transition-shadow cursor-pointer">
-              <div className="w-10 h-10 rounded-xl bg-[#d8e2ff] text-[#0059bb] flex items-center justify-center">
-                <span className="material-symbols-outlined text-[18px]">pool</span>
-              </div>
-              <div className="flex-grow">
-                <p className="font-bold text-xs text-[#181c20] leading-none">Swim Lanes #4</p>
-                <p className="text-[10px] text-[#717786] mt-1 font-semibold">Oct 12 • 05:00 PM</p>
-              </div>
-              <span className="material-symbols-outlined text-[#717786]/40 text-sm">chevron_right</span>
-            </div>
-
-          </div>
-
         </aside>
 
       </div>
