@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { UserProfile, ForumPost, Facility, GameSession, Task, ScheduleItem } from './types';
-import { 
-  USER_PROFILES, 
-  INITIAL_FACILITIES, 
-  INITIAL_SESSIONS, 
-  INITIAL_POSTS, 
-  INITIAL_TASKS, 
-  INITIAL_SCHEDULE 
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserProfile, ForumPost, Facility, GameSession, Task, ScheduleItem, Toast } from './types';
+import {
+  USER_PROFILES,
+  INITIAL_FACILITIES,
+  INITIAL_SESSIONS,
+  INITIAL_POSTS,
+  INITIAL_TASKS,
+  INITIAL_SCHEDULE
 } from './store';
 
 import Sidebar from './components/Sidebar';
@@ -16,136 +16,304 @@ import ForumView from './components/ForumView';
 import FacilityBookingView from './components/FacilityBookingView';
 import GameSessionsView from './components/GameSessionsView';
 import ScheduleView from './components/ScheduleView';
+import ToastContainer from './components/Toast';
+import LoginPage from './components/LoginPage';
 
-import { 
-  StartMatchModal, 
-  StartDiscussionModal, 
-  ForumDetailModal, 
-  FacilityBookModal 
+import {
+  StartMatchModal,
+  StartDiscussionModal,
+  ForumDetailModal,
+  FacilityBookModal,
+  SessionDetailModal
 } from './components/Modals';
 
+import { pb } from './pocketbase';
+
 export default function App() {
-  // Navigation Router tab state
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  
-  // Mobile drawer trigger
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-
-  // Search input state (synchronized globally but acts locally per view context)
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Active Personas selection
-  const [activeUser, setActiveUser] = useState<UserProfile>(USER_PROFILES[0]);
   
-  // Centralized State collections with local persistence fallbacks
-  const [forumPosts, setForumPosts] = useState<ForumPost[]>(() => {
-    const saved = localStorage.getItem('beenet_forum_posts_clean_v1');
-    return saved ? JSON.parse(saved) : INITIAL_POSTS;
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [activeUser, setActiveUser] = useState<UserProfile | null>(() => {
+    return pb.authStore.model ? (pb.authStore.model as any) : null;
   });
 
-  const [gameSessions, setGameSessions] = useState<GameSession[]>(() => {
-    const saved = localStorage.getItem('beenet_game_sessions_clean_v1');
-    return saved ? JSON.parse(saved) : INITIAL_SESSIONS;
+  const [campaignBanner, setCampaignBanner] = useState(() => {
+    const saved = localStorage.getItem('beenet_campaign_banner_clean_v1');
+    return saved ? JSON.parse(saved) : {
+      title: 'Train for Rector Cup 2026!',
+      subtitle: 'Verified student programs starting early next months.',
+      image: 'https://student.binus.ac.id/wp-content/uploads/2018/09/RECTOR-CUP-OFFICIAL-FLAG-PRINT-size-150x100-Cm.jpg'
+    };
   });
 
-  const [facilities, setFacilities] = useState<Facility[]>(INITIAL_FACILITIES);
+  const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
+  const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
+  const [facilities] = useState<Facility[]>(INITIAL_FACILITIES);
+  const [todoList, setTodoList] = useState<Task[]>([]);
+  const [scheduleList, setScheduleList] = useState<ScheduleItem[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const [todoList, setTodoList] = useState<Task[]>(() => {
-    const saved = localStorage.getItem('beenet_todo_list_clean_v1');
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
-  });
-
-  const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(() => {
-    const saved = localStorage.getItem('beenet_schedule_list_clean_v1');
-    return saved ? JSON.parse(saved) : INITIAL_SCHEDULE;
-  });
-
-  // Notifications states
-  const [notificationsCount, setNotificationsCount] = useState<number>(1);
-
-  // Floating modals controls
   const [isMatchModalOpen, setIsMatchModalOpen] = useState<boolean>(false);
   const [isDiscussionModalOpen, setIsDiscussionModalOpen] = useState<boolean>(false);
   const [selectedForumPost, setSelectedForumPost] = useState<ForumPost | null>(null);
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
+  const [selectedGameSession, setSelectedGameSession] = useState<GameSession | null>(null);
+  const [defaultMatchLocation, setDefaultMatchLocation] = useState<string>('');
 
-  // Synchronize localStorage
+  const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
+    const id = `toast_${Date.now()}_${Math.random()}`;
+    setToasts(prev => [...prev, { id, message, type }]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  // Fetch users & setup real-time/sync details
   useEffect(() => {
-    localStorage.setItem('beenet_forum_posts_clean_v1', JSON.stringify(forumPosts));
-  }, [forumPosts]);
+    const fetchUsers = async () => {
+      try {
+        const records = await pb.collection('users').getFullList();
+        setUsers(records.map(r => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          department: r.department,
+          avatar: r.avatar,
+          level: r.level,
+          athleteTier: r.athleteTier,
+          points: r.points,
+          futsalProgress: r.futsalProgress,
+          basketballProgress: r.basketballProgress,
+          tennisProgress: r.tennisProgress
+        })));
+      } catch (err) {
+        console.error("Failed to fetch users from PocketBase", err);
+      }
+    };
 
+    fetchUsers();
+  }, [activeUser]);
+
+  // Load user data on activeUser changes
   useEffect(() => {
-    localStorage.setItem('beenet_game_sessions_clean_v1', JSON.stringify(gameSessions));
-  }, [gameSessions]);
+    if (!activeUser) return;
 
-  useEffect(() => {
-    localStorage.setItem('beenet_todo_list_clean_v1', JSON.stringify(todoList));
-  }, [todoList]);
+    const loadData = async () => {
+      try {
+        // Fetch forum posts
+        const posts = await pb.collection('forum_posts').getFullList({ sort: '-created' });
+        setForumPosts(posts.map(p => ({
+          id: p.id,
+          author: p.author,
+          avatar: p.avatar,
+          timeAgo: p.timeAgo,
+          category: p.category,
+          title: p.title,
+          body: p.body,
+          image: p.image,
+          replies: p.replies,
+          upvotes: p.upvotes,
+          tag: p.tag,
+          comments: p.comments || []
+        })));
 
-  useEffect(() => {
-    localStorage.setItem('beenet_schedule_list_clean_v1', JSON.stringify(scheduleList));
-  }, [scheduleList]);
+        // Fetch game sessions
+        const sessions = await pb.collection('game_sessions').getFullList({ sort: '-created' });
+        setGameSessions(sessions.map(s => ({
+          id: s.id,
+          title: s.title,
+          location: s.location,
+          time: s.time,
+          playersJoined: s.playersJoined,
+          playersMax: s.playersMax,
+          sport: s.sport,
+          level: s.level,
+          hostName: s.hostName,
+          hostAvatar: s.hostAvatar,
+          hostId: s.hostId,
+          image: s.image
+        })));
 
-  // Handle Switching student personas (resets local queries safely)
-  const handleUserChange = (newUser: UserProfile) => {
-    setActiveUser(newUser);
-    setSearchQuery('');
-    // Dynamically adjust view tab to highlight specific elements matching reference mockups
-    if (newUser.department === "Computer Science") {
-      setCurrentTab('schedule');
-    } else if (newUser.department === "Moderator") {
-      setCurrentTab('sessions');
-    } else {
-      setCurrentTab('dashboard');
+        // Fetch tasks
+        const tasks = await pb.collection('tasks').getFullList({
+          filter: `userId = "${activeUser.id}"`,
+          sort: '-created'
+        });
+        setTodoList(tasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          time: t.time,
+          completed: t.completed,
+          isYesterday: t.isYesterday
+        })));
+
+        // Fetch schedules
+        const schedules = await pb.collection('schedules').getFullList({
+          filter: `userId = "${activeUser.id}"`,
+          sort: 'day'
+        });
+        setScheduleList(schedules.map(s => ({
+          id: s.id,
+          day: s.day,
+          month: s.month,
+          year: s.year,
+          title: s.title,
+          location: s.location,
+          color: s.color as any,
+          time: s.time
+        })));
+      } catch (err) {
+        console.error("Failed to load user-specific data from PocketBase", err);
+      }
+    };
+
+    loadData();
+  }, [activeUser]);
+
+  const handleUpdateCampaign = (title: string, subtitle: string, image: string) => {
+    const updated = { title, subtitle, image };
+    setCampaignBanner(updated);
+    localStorage.setItem('beenet_campaign_banner_clean_v1', JSON.stringify(updated));
+    showToast('Dashboard campaign banner updated successfully!', 'success');
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await pb.collection('forum_posts').delete(postId);
+      setForumPosts(prev => prev.filter(p => p.id !== postId));
+      showToast('Forum post deleted successfully.', 'success');
+    } catch (err) {
+      console.error("Failed to delete post", err);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await pb.collection('game_sessions').delete(sessionId);
+      setGameSessions(prev => prev.filter(s => s.id !== sessionId));
+
+      const schedules = await pb.collection('schedules').getList(1, 100, {
+        filter: `userId = "${activeUser.id}"`
+      });
+      for (const s of schedules.items) {
+        if (s.id === `sch_sess_${sessionId}`) {
+          await pb.collection('schedules').delete(s.id);
+        }
+      }
+      setScheduleList(prev => prev.filter(s => s.id !== `sch_sess_${sessionId}`));
+
+      const tasks = await pb.collection('tasks').getList(1, 100, {
+        filter: `userId = "${activeUser.id}"`
+      });
+      for (const t of tasks.items) {
+        if (t.id === `task_sess_${sessionId}`) {
+          await pb.collection('tasks').delete(t.id);
+        }
+      }
+      setTodoList(prev => prev.filter(t => t.id !== `task_sess_${sessionId}`));
+
+      showToast('Game session cancelled and deleted completely.', 'success');
+    } catch (err) {
+      console.error("Failed to delete session", err);
+    }
+  };
+
+  const handleRegister = (newUser: UserProfile): boolean => {
+    setUsers(prev => {
+      if (prev.some(u => u.email.toLowerCase() === newUser.email.toLowerCase())) return prev;
+      return [...prev, newUser];
+    });
+    showToast(`Account for ${newUser.name} created successfully!`, 'success');
+    return true;
+  };
+
+  const handleLogin = (email: string) => {
+    const foundUser = pb.authStore.model ? (pb.authStore.model as any) : null;
+    if (foundUser) {
+      setActiveUser(foundUser);
+      showToast(`Logged in successfully as ${foundUser.name}!`, 'success');
+      
+      if (foundUser.department === 'Computer Science') {
+        setCurrentTab('schedule');
+      } else if (foundUser.department === 'Moderator') {
+        setCurrentTab('sessions');
+      } else {
+        setCurrentTab('dashboard');
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    pb.authStore.clear();
+    setActiveUser(null);
+    showToast('Logged out successfully.', 'info');
+  };
+
+  const handleUserChange = async (newUser: UserProfile) => {
+    try {
+      let password = 'user123';
+      if (newUser.email === 'kevin.admin@binus.ac.id') password = 'admin123';
+      else if (newUser.email === 'kevin.moderator@binus.ac.id') password = 'mod123';
+      else if (newUser.password) password = newUser.password;
+
+      await pb.collection('users').authWithPassword(newUser.email, password);
+      
+      const foundUser = pb.authStore.model ? (pb.authStore.model as any) : null;
+      if (foundUser) {
+        setActiveUser(foundUser);
+        setSearchQuery('');
+        if (foundUser.department === 'Computer Science') {
+          setCurrentTab('schedule');
+        } else if (foundUser.department === 'Moderator') {
+          setCurrentTab('sessions');
+        } else {
+          setCurrentTab('dashboard');
+        }
+      }
+    } catch (err) {
+      console.error("Failed to switch user", err);
     }
   };
 
   // FORUM ACTIONS
-  // Upvotes + Downvotes thread handler
-  const handleVotePost = (postId: string, direction: 'up' | 'down') => {
-    setForumPosts(prevPosts => 
-      prevPosts.map(post => {
-        if (post.id !== postId) return post;
-        
-        let currentVote = post.voted;
-        let upvoteChange = 0;
-        
-        if (direction === 'up') {
-          if (currentVote === 'up') {
-            upvoteChange = -1;
-            currentVote = null;
-          } else {
-            upvoteChange = currentVote === 'down' ? 2 : 1;
-            currentVote = 'up';
-          }
-        } else {
-          if (currentVote === 'down') {
-            upvoteChange = 1;
-            currentVote = null;
-          } else {
-            upvoteChange = currentVote === 'up' ? -2 : -1;
-            currentVote = 'down';
-          }
-        }
-        
-        const updated = {
-          ...post,
-          upvotes: post.upvotes + upvoteChange,
-          voted: currentVote
-        };
+  const handleVotePost = async (postId: string, direction: 'up' | 'down') => {
+    let upvoteChange = 0;
+    let post = forumPosts.find(p => p.id === postId);
+    if (!post) return;
 
-        // If this is currently focus-selected, refresh modal details
-        if (selectedForumPost && selectedForumPost.id === postId) {
-          setSelectedForumPost(updated);
-        }
+    let currentVote = post.voted;
+    if (direction === 'up') {
+      if (currentVote === 'up') { upvoteChange = -1; currentVote = null; }
+      else { upvoteChange = currentVote === 'down' ? 2 : 1; currentVote = 'up'; }
+    } else {
+      if (currentVote === 'down') { upvoteChange = 1; currentVote = null; }
+      else { upvoteChange = currentVote === 'up' ? -2 : -1; currentVote = 'down'; }
+    }
 
-        return updated;
-      })
-    );
+    const updatedVotes = post.upvotes + upvoteChange;
+
+    try {
+      await pb.collection('forum_posts').update(postId, {
+        upvotes: updatedVotes
+      });
+
+      setForumPosts(prevPosts =>
+        prevPosts.map(p => {
+          if (p.id !== postId) return p;
+          const updated = { ...p, upvotes: updatedVotes, voted: currentVote };
+          if (selectedForumPost?.id === postId) setSelectedForumPost(updated);
+          return updated;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to vote post", err);
+    }
   };
 
-  // Add Comment/Reply to Forum discussion thread
-  const handlePostComment = (postId: string, commentText: string) => {
+  const handlePostComment = async (postId: string, commentText: string) => {
     const newComment = {
       id: `com_${Date.now()}`,
       author: activeUser.name,
@@ -154,30 +322,32 @@ export default function App() {
       body: commentText
     };
 
-    setForumPosts(prevPosts => 
-      prevPosts.map(post => {
-        if (post.id !== postId) return post;
-        
-        const updated = {
-          ...post,
-          replies: post.replies + 1,
-          comments: [...post.comments, newComment]
-        };
+    const post = forumPosts.find(p => p.id === postId);
+    if (!post) return;
 
-        // If this is currently focus-selected, refresh modal details
-        if (selectedForumPost && selectedForumPost.id === postId) {
-          setSelectedForumPost(updated);
-        }
+    const updatedComments = [...post.comments, newComment];
 
-        return updated;
-      })
-    );
+    try {
+      await pb.collection('forum_posts').update(postId, {
+        replies: post.replies + 1,
+        comments: updatedComments
+      });
+      
+      setForumPosts(prevPosts =>
+        prevPosts.map(p => {
+          if (p.id !== postId) return p;
+          const updated = { ...p, replies: p.replies + 1, comments: updatedComments };
+          if (selectedForumPost?.id === postId) setSelectedForumPost(updated);
+          return updated;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to post comment", err);
+    }
   };
 
-  // Start Discussion
-  const handleCreateThread = (newPostData: Partial<ForumPost>) => {
-    const newPost: ForumPost = {
-      id: `post_${Date.now()}`,
+  const handleCreateThread = async (newPostData: Partial<ForumPost>) => {
+    const newPost = {
       author: activeUser.name,
       avatar: activeUser.avatar,
       timeAgo: 'Just now',
@@ -185,79 +355,95 @@ export default function App() {
       tag: newPostData.tag || 'RANDOM',
       title: newPostData.title || '',
       body: newPostData.body || '',
-      image: newPostData.image,
+      image: newPostData.image || '',
       replies: 0,
       upvotes: 1,
-      voted: 'up',
       comments: []
     };
-
-    setForumPosts([newPost, ...forumPosts]);
-    setNotificationsCount(prev => prev + 1);
+    
+    try {
+      const record = await pb.collection('forum_posts').create(newPost);
+      setForumPosts([record as any, ...forumPosts]);
+    } catch (err) {
+      console.error("Failed to create thread", err);
+    }
   };
 
-  // GAME SESSIONS ACTIONS
-  // Join or Leave Pick-up matches
-  const handleJoinSession = (sessionId: string) => {
-    setGameSessions(prevSessions => 
-      prevSessions.map(sess => {
-        if (sess.id !== sessionId) return sess;
+  // GAME SESSION ACTIONS
+  const handleJoinSession = async (sessionId: string) => {
+    const now = new Date();
+    const todayDay = String(now.getDate()).padStart(2, '0');
+    const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const todayYear = String(now.getFullYear());
 
-        const alreadyJoined = sess.hasJoined;
-        const updatedJoinedCount = alreadyJoined 
-          ? sess.playersJoined - 1 
-          : sess.playersJoined + 1;
+    const sess = gameSessions.find(s => s.id === sessionId);
+    if (!sess) return;
 
-        const updated = {
-          ...sess,
-          playersJoined: updatedJoinedCount,
-          hasJoined: !alreadyJoined
-        };
+    const alreadyJoined = sess.hasJoined;
+    const updatedPlayersJoined = alreadyJoined ? sess.playersJoined - 1 : sess.playersJoined + 1;
 
-        // Side effect: If joined, add a schedule training item
-        if (!alreadyJoined) {
-          const freshSched: ScheduleItem = {
-            id: `sch_sess_${sess.id}`,
-            day: '06', // Sat 06 June standard placeholder
-            title: sess.title,
-            location: sess.location,
-            color: 'success',
-            time: sess.time
-          };
-          
-          setScheduleList(prev => {
-            if (prev.some(s => s.id === freshSched.id)) return prev;
-            return [...prev, freshSched];
-          });
+    try {
+      await pb.collection('game_sessions').update(sessionId, {
+        playersJoined: updatedPlayersJoined
+      });
 
-          // Also create a linked checklist item in todo!
-          const freshTask: Task = {
-            id: `task_sess_${sess.id}`,
-            title: `${sess.title} (${sess.sport})`,
-            time: sess.time,
-            completed: false,
-            isYesterday: false
-          };
-          setTodoList(prev => {
-            if (prev.some(t => t.id === freshTask.id)) return prev;
-            return [freshTask, ...prev];
-          });
+      setGameSessions(prevSessions =>
+        prevSessions.map(s => {
+          if (s.id !== sessionId) return s;
+          return { ...s, playersJoined: updatedPlayersJoined, hasJoined: !alreadyJoined };
+        })
+      );
 
-        } else {
-          // If leaving, clean schedule and task
-          setScheduleList(prev => prev.filter(s => s.id !== `sch_sess_${sess.id}`));
-          setTodoList(prev => prev.filter(t => t.id !== `task_sess_${sess.id}`));
+      if (!alreadyJoined) {
+        const scheduleRecord = await pb.collection('schedules').create({
+          day: todayDay,
+          month: todayMonth,
+          year: todayYear,
+          title: sess.title,
+          location: sess.location,
+          color: 'success',
+          time: sess.time,
+          userId: activeUser.id
+        });
+        setScheduleList(prev => [...prev, scheduleRecord as any]);
+
+        const taskRecord = await pb.collection('tasks').create({
+          title: `${sess.title} (${sess.sport})`,
+          time: sess.time,
+          completed: false,
+          isYesterday: false,
+          userId: activeUser.id
+        });
+        setTodoList(prev => [taskRecord as any, ...prev]);
+      } else {
+        const schedules = await pb.collection('schedules').getList(1, 1, {
+          filter: `userId = "${activeUser.id}" && title = "${sess.title}"`
+        });
+        if (schedules.items.length > 0) {
+          await pb.collection('schedules').delete(schedules.items[0].id);
+          setScheduleList(prev => prev.filter(s => s.id !== schedules.items[0].id));
         }
 
-        return updated;
-      })
-    );
+        const tasks = await pb.collection('tasks').getList(1, 1, {
+          filter: `userId = "${activeUser.id}" && title = "${sess.title} (${sess.sport})"`
+        });
+        if (tasks.items.length > 0) {
+          await pb.collection('tasks').delete(tasks.items[0].id);
+          setTodoList(prev => prev.filter(t => t.id !== tasks.items[0].id));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to join session", err);
+    }
   };
 
-  // Host a Match
-  const handleCreateMatch = (newMatchData: Partial<GameSession>) => {
-    const newMatch: GameSession = {
-      id: `ses_${Date.now()}`,
+  const handleCreateMatch = async (newMatchData: Partial<GameSession>) => {
+    const now = new Date();
+    const todayDay = String(now.getDate()).padStart(2, '0');
+    const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const todayYear = String(now.getFullYear());
+
+    const newMatch = {
       title: newMatchData.title || '',
       location: newMatchData.location || '',
       time: newMatchData.time || '17:00 - 18:30',
@@ -268,104 +454,127 @@ export default function App() {
       hostName: activeUser.name,
       hostAvatar: activeUser.avatar,
       hostId: newMatchData.hostId || '2802522304',
-      image: newMatchData.image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS23UukNLYQRULFRNJKCbqe-sJCSwt3mTl5Sw&s",
-      hasJoined: true
+      image: newMatchData.image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS23UukNLYQRULFRNJKCbqe-sJCSwt3mTl5Sw&s"
     };
 
-    setGameSessions([newMatch, ...gameSessions]);
+    try {
+      const matchRecord = await pb.collection('game_sessions').create(newMatch);
+      setGameSessions([matchRecord as any, ...gameSessions]);
 
-    // Automatically reserve this on calendar schedule reactively
-    const matchSched: ScheduleItem = {
-      id: `sch_sess_${newMatch.id}`,
-      day: '05', // Places on Fri 05 June
-      title: newMatch.title,
-      location: newMatch.location,
-      color: 'primary',
-      time: newMatch.time
-    };
-    setScheduleList(prev => [...prev, matchSched]);
+      const scheduleRecord = await pb.collection('schedules').create({
+        day: todayDay,
+        month: todayMonth,
+        year: todayYear,
+        title: matchRecord.title,
+        location: matchRecord.location,
+        color: 'primary',
+        time: matchRecord.time,
+        userId: activeUser.id
+      });
+      setScheduleList(prev => [...prev, scheduleRecord as any]);
 
-    // Also place in student's active todo checklist
-    const matchTask: Task = {
-      id: `task_sess_${newMatch.id}`,
-      title: `${newMatch.title} [Hosted]`,
-      time: newMatch.time,
-      completed: false,
-      isYesterday: false
-    };
-    setTodoList(prev => [matchTask, ...prev]);
+      const taskRecord = await pb.collection('tasks').create({
+        title: `${matchRecord.title} [Hosted]`,
+        time: matchRecord.time,
+        completed: false,
+        isYesterday: false,
+        userId: activeUser.id
+      });
+      setTodoList(prev => [taskRecord as any, ...prev]);
 
-    setNotificationsCount(prev => prev + 1);
-    alert(`🎉 Success! Match "${newMatch.title}" hosted. We added it to your schedule & to-do checklist!`);
+      showToast(`Match "${matchRecord.title}" hosted! Added to your schedule.`, 'success');
+    } catch (err) {
+      console.error("Failed to host match", err);
+    }
   };
 
   // FACILITY RESERVATIONS
-  // Booking confirmation
-  const handleConfirmBooking = (facId: string, day: string, time: string, titleName: string) => {
-    const bookingSchedItem: ScheduleItem = {
-      id: `sch_book_${Date.now()}`,
-      day: day, // assigned day
-      title: `Booked: ${titleName}`,
-      location: facilities.find(f => f.id === facId)?.title || "Campus Facility",
-      color: 'secondary',
-      time: time
-    };
+  const handleConfirmBooking = async (facId: string, day: string, month: string, year: string, time: string, titleName: string) => {
+    try {
+      const facilityName = facilities.find(f => f.id === facId)?.title || 'Campus Facility';
+      
+      const scheduleRecord = await pb.collection('schedules').create({
+        day,
+        month,
+        year,
+        title: `Booked: ${titleName}`,
+        location: facilityName,
+        color: 'secondary',
+        time,
+        userId: activeUser.id
+      });
+      setScheduleList(prev => [...prev, scheduleRecord as any]);
 
-    setScheduleList(prev => [...prev, bookingSchedItem]);
+      const taskRecord = await pb.collection('tasks').create({
+        title: `Attend ${titleName} reservation`,
+        time,
+        completed: false,
+        isYesterday: false,
+        userId: activeUser.id
+      });
+      setTodoList(prev => [taskRecord as any, ...prev]);
 
-    // Automatically checkmark as scheduled task
-    const bookingTask: Task = {
-      id: `task_book_${Date.now()}`,
-      title: `Attend ${titleName} reservation`,
-      time: time,
-      completed: false,
-      isYesterday: false
-    };
-    setTodoList(prev => [bookingTask, ...prev]);
+      showToast(`Venue booked on ${day}/${month} at ${time}. Added to schedule!`, 'success');
 
-    setNotificationsCount(prev => prev + 1);
-    alert(`📅 Venue Booked! Created schedule slot on Day June ${day} at ${time}.`);
+      const bookedFac = facilities.find(f => f.id === facId);
+      if (bookedFac) {
+        setDefaultMatchLocation(bookedFac.title);
+        setTimeout(() => {
+          setIsMatchModalOpen(true);
+        }, 500);
+      }
+    } catch (err) {
+      console.error("Failed to confirm booking", err);
+    }
   };
 
   // TASK OPERATIONS
-  // Toggle checkboard
-  const handleToggleTodo = (id: string) => {
-    setTodoList(prev => 
-      prev.map(task => {
-        if (task.id === id) {
-          const toggledState = !task.completed;
-          return {
-            ...task,
-            completed: toggledState
-          };
-        }
-        return task;
-      })
+  const handleToggleTodo = async (id: string) => {
+    const task = todoList.find(t => t.id === id);
+    if (!task) return;
+
+    try {
+      await pb.collection('tasks').update(id, {
+        completed: !task.completed
+      });
+
+      setTodoList(prev =>
+        prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
+      );
+    } catch (err) {
+      console.error("Failed to toggle task", err);
+    }
+  };
+
+  const handleAddTodo = async (title: string, time: string) => {
+    try {
+      const record = await pb.collection('tasks').create({
+        title,
+        time,
+        completed: false,
+        isYesterday: false,
+        userId: activeUser.id
+      });
+      setTodoList([record as any, ...todoList]);
+    } catch (err) {
+      console.error("Failed to add task", err);
+    }
+  };
+
+  if (!activeUser) {
+    return (
+      <div className="min-h-screen bg-[#f7f9ff]">
+        <LoginPage onLogin={handleLogin} allUsers={users} onRegister={handleRegister} />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      </div>
     );
-  };
+  }
 
-  // Create customized inline task
-  const handleAddTodo = (title: string, time: string) => {
-    const newTask: Task = {
-      id: `task_${Date.now()}`,
-      title,
-      time,
-      completed: false,
-      isYesterday: false
-    };
-    setTodoList([newTask, ...todoList]);
-  };
-
-  const handleClearNotifications = () => {
-    setNotificationsCount(0);
-  };
-
-  // Render contextual routing views
   const renderTabContent = () => {
     switch (currentTab) {
       case 'dashboard':
         return (
-          <DashboardView 
+          <DashboardView
             activeUser={activeUser}
             forumPosts={forumPosts}
             gameSessions={gameSessions}
@@ -375,43 +584,52 @@ export default function App() {
             onJoinSession={handleJoinSession}
             onNavigateToTab={(tab) => setCurrentTab(tab)}
             onSelectPost={(post) => setSelectedForumPost(post)}
+            onShowToast={showToast}
+            onSelectSession={(session) => setSelectedGameSession(session)}
+            campaignBanner={campaignBanner}
+            onUpdateCampaign={handleUpdateCampaign}
           />
         );
       case 'forum':
         return (
-          <ForumView 
+          <ForumView
             activeUser={activeUser}
             forumPosts={forumPosts}
             searchQuery={searchQuery}
             onSelectPost={(post) => setSelectedForumPost(post)}
             onOpenCreateDiscussion={() => setIsDiscussionModalOpen(true)}
             onVotePost={handleVotePost}
+            onShowToast={showToast}
+            onDeletePost={handleDeletePost}
           />
         );
       case 'facilities':
         return (
-          <FacilityBookingView 
+          <FacilityBookingView
             facilities={facilities}
             searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             onBookNow={(fac) => setSelectedFacility(fac)}
+            onShowToast={showToast}
           />
         );
       case 'sessions':
         return (
-          <GameSessionsView 
+          <GameSessionsView
             activeUser={activeUser}
             gameSessions={gameSessions}
             searchQuery={searchQuery}
             onJoinSession={handleJoinSession}
             onOpenCreateMatch={() => setIsMatchModalOpen(true)}
+            onShowToast={showToast}
+            onSelectSession={(session) => setSelectedGameSession(session)}
           />
         );
       case 'schedule':
         return (
-          <ScheduleView 
+          <ScheduleView
             activeUser={activeUser}
             scheduleList={scheduleList}
-            forumSearch={searchQuery}
           />
         );
       case 'settings':
@@ -446,109 +664,82 @@ export default function App() {
 
   return (
     <div className="flex bg-[#f7f9ff] text-[#181c20] font-sans min-h-screen">
-      
-      {/* Sidebar navigation */}
-      <Sidebar 
-        currentTab={currentTab} 
-        onTabChange={(tab) => {
-          setCurrentTab(tab);
-          setSearchQuery(''); // clear searches 
-        }}
+      <Sidebar
+        currentTab={currentTab}
+        onTabChange={(tab) => { setCurrentTab(tab); setSearchQuery(''); }}
         onStartMatch={() => setIsMatchModalOpen(true)}
         mobileOpen={mobileMenuOpen}
         setMobileOpen={setMobileMenuOpen}
+        onLogout={handleLogout}
       />
 
-      {/* Main Canvas layout area */}
       <div className="flex-grow flex flex-col md:pl-64 min-h-screen">
-        
-        {/* Top bar header */}
-        <Header 
+        <Header
           currentTab={currentTab}
           activeUser={activeUser}
-          allUsers={USER_PROFILES}
+          allUsers={users}
           onUserChange={handleUserChange}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onMenuTrigger={() => setMobileMenuOpen(true)}
-          notificationsCount={notificationsCount}
-          onClearNotifications={handleClearNotifications}
         />
 
-        {/* Content viewport */}
         <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-12 bg-[#f7f9ff]">
           {renderTabContent()}
-          
-          {/* Global Web credentials footer */}
+
           <footer className="mt-16 border-t border-[#c1c6d7]/20 py-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[#717786] text-xs">
             <div className="flex items-center gap-2 select-none">
               <span className="font-extrabold text-[#0059bb] font-display">BeeNET</span>
               <span>© 2026 Group 12</span>
             </div>
             <div className="flex gap-6 font-semibold">
-              <button onClick={() => alert("Privacy Policy: All booking data is compiled onto secure academic rosters.")} className="hover:text-[#0059bb] cursor-pointer">Privacy Policy</button>
-              <button onClick={() => alert("Terms of Service: Respect athletic fields guidelines & show sportsmanship.")} className="hover:text-[#0059bb] cursor-pointer">Terms of Service</button>
-              <button onClick={() => alert("Support: contact Admin helpdesk at admin-beenet@binus.ac.id")} className="hover:text-[#0059bb] cursor-pointer">Contact Admin</button>
+              <button onClick={() => showToast('Privacy Policy: All booking data is compiled onto secure academic rosters.', 'info')} className="hover:text-[#0059bb] cursor-pointer">Privacy Policy</button>
+              <button onClick={() => showToast('Terms of Service: Respect athletic fields guidelines & show sportsmanship.', 'info')} className="hover:text-[#0059bb] cursor-pointer">Terms of Service</button>
+              <button onClick={() => showToast('Support: contact Admin helpdesk at admin-beenet@binus.ac.id', 'info')} className="hover:text-[#0059bb] cursor-pointer">Contact Admin</button>
             </div>
           </footer>
         </main>
 
-        {/* Floating Mobile Bottom Navigation drawer */}
         <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-[#c1c6d7]/30 py-3.5 px-6 flex justify-between items-center z-40 shadow-md">
-          <button 
-            onClick={() => setCurrentTab('dashboard')}
-            className={`flex flex-col items-center gap-1 ${currentTab === 'dashboard' ? 'text-[#0059bb]' : 'text-[#717786]'}`}
-          >
+          <button onClick={() => setCurrentTab('dashboard')} className={`flex flex-col items-center gap-1 ${currentTab === 'dashboard' ? 'text-[#0059bb]' : 'text-[#717786]'}`}>
             <span className="material-symbols-outlined text-[22px]">dashboard</span>
             <span className="text-[10px] font-bold">Home</span>
           </button>
-          
-          <button 
-            onClick={() => setCurrentTab('facilities')}
-            className={`flex flex-col items-center gap-1 ${currentTab === 'facilities' ? 'text-[#0059bb]' : 'text-[#717786]'}`}
-          >
+          <button onClick={() => setCurrentTab('facilities')} className={`flex flex-col items-center gap-1 ${currentTab === 'facilities' ? 'text-[#0059bb]' : 'text-[#717786]'}`}>
             <span className="material-symbols-outlined text-[22px]">stadium</span>
             <span className="text-[10px] font-bold">Facilities</span>
           </button>
-          
-          <button 
-            onClick={() => setCurrentTab('forum')}
-            className={`flex flex-col items-center gap-1 ${currentTab === 'forum' ? 'text-[#0059bb]' : 'text-[#717786]'}`}
-          >
+          <button onClick={() => setCurrentTab('forum')} className={`flex flex-col items-center gap-1 ${currentTab === 'forum' ? 'text-[#0059bb]' : 'text-[#717786]'}`}>
             <span className="material-symbols-outlined text-[22px]">forum</span>
             <span className="text-[10px] font-bold">Forum</span>
           </button>
-          
-          <button 
-            onClick={() => setCurrentTab('schedule')}
-            className={`flex flex-col items-center gap-1 ${currentTab === 'schedule' ? 'text-[#0059bb]' : 'text-[#717786]'}`}
-          >
+          <button onClick={() => setCurrentTab('schedule')} className={`flex flex-col items-center gap-1 ${currentTab === 'schedule' ? 'text-[#0059bb]' : 'text-[#717786]'}`}>
             <span className="material-symbols-outlined text-[22px]">calendar_month</span>
             <span className="text-[10px] font-bold">Schedule</span>
           </button>
         </nav>
-
       </div>
 
-      {/* OVERLAY INTERACTIVE MODALS */}
-      {/* Create custom basketball or futsal match modal */}
-      <StartMatchModal 
+      <StartMatchModal
         isOpen={isMatchModalOpen}
-        onClose={() => setIsMatchModalOpen(false)}
+        onClose={() => {
+          setIsMatchModalOpen(false);
+          setDefaultMatchLocation('');
+        }}
         activeUser={activeUser}
         onCreateMatch={handleCreateMatch}
+        onShowToast={showToast}
+        facilities={facilities}
+        defaultLocation={defaultMatchLocation}
       />
-
-      {/* Add customized forum discussion modals */}
-      <StartDiscussionModal 
+      <StartDiscussionModal
         isOpen={isDiscussionModalOpen}
         onClose={() => setIsDiscussionModalOpen(false)}
         activeUser={activeUser}
         onCreateThread={handleCreateThread}
+        onShowToast={showToast}
       />
-
-      {/* Dynamic comments threaded listing */}
-      <ForumDetailModal 
+      <ForumDetailModal
         post={selectedForumPost}
         isOpen={selectedForumPost !== null}
         onClose={() => setSelectedForumPost(null)}
@@ -556,15 +747,24 @@ export default function App() {
         onPostComment={handlePostComment}
         onVotePost={handleVotePost}
       />
-
-      {/* Booking schedule block confirm modal */}
-      <FacilityBookModal 
+      <FacilityBookModal
         facility={selectedFacility}
         isOpen={selectedFacility !== null}
         onClose={() => setSelectedFacility(null)}
         onConfirmBooking={handleConfirmBooking}
+        onShowToast={showToast}
+      />
+      <SessionDetailModal
+        session={selectedGameSession}
+        isOpen={selectedGameSession !== null}
+        onClose={() => setSelectedGameSession(null)}
+        activeUser={activeUser}
+        onJoinSession={handleJoinSession}
+        onShowToast={showToast}
+        onDeleteSession={handleDeleteSession}
       />
 
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

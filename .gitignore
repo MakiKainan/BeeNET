@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# PocketBase
+pocketbase/pocketbase
+pocketbase/pocketbase.exe
+pocketbase/pb_data/

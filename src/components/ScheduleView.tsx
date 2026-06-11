@@ -1,191 +1,212 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScheduleItem, UserProfile } from '../types';
 
 interface ScheduleViewProps {
   activeUser: UserProfile;
   scheduleList: ScheduleItem[];
-  forumSearch: string; // not used directly, here for compliance
 }
 
-export default function ScheduleView({
-  activeUser,
-  scheduleList
-}: ScheduleViewProps) {
-  
-  // Custom alignment for calendar days from Monday (June 2026 starts on Monday!)
-  // In the mockup:
-  // Mon 01, Tue 02, Wed 03, Thu 04, Fri 05, Sat 06, Sun 07
-  // Mon 08, Tue 09, Wed 10
-  const calendarDays = [
-    { num: '28', currentMonth: false },
-    { num: '29', currentMonth: false },
-    { num: '30', currentMonth: false },
-    { num: '31', currentMonth: false },
-    { num: '01', currentMonth: true },
-    { num: '02', currentMonth: true },
-    { num: '03', currentMonth: true },
-    { num: '04', currentMonth: true },
-    { num: '05', currentMonth: true },
-    { num: '06', currentMonth: true },
-    { num: '07', currentMonth: true },
-    { num: '08', currentMonth: true },
-    { num: '09', currentMonth: true },
-    { num: '10', currentMonth: true },
-    { num: '11', currentMonth: true },
-    { num: '12', currentMonth: true },
-    { num: '13', currentMonth: true },
-    { num: '14', currentMonth: true }
-  ];
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
-  // Helper to color code calendar items matching scheduleList
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+// Returns 0=Mon offset for first day of month
+function getFirstDayOffset(year: number, month: number) {
+  const day = new Date(year, month, 1).getDay(); // 0=Sun
+  return day === 0 ? 6 : day - 1;
+}
+
+export default function ScheduleView({ scheduleList }: ScheduleViewProps) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [selectedDayNum, setSelectedDayNum] = useState<string | null>(null);
+
+  const viewMonthStr = String(viewMonth + 1).padStart(2, '0');
+  const viewYearStr = String(viewYear);
+  const todayDayStr = String(today.getDate()).padStart(2, '0');
+  const isCurrentMonthView = viewMonth === today.getMonth() && viewYear === today.getFullYear();
+
+  const goToPrevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else { setViewMonth(m => m - 1); }
+    setSelectedDayNum(null);
+  };
+
+  const goToNextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else { setViewMonth(m => m + 1); }
+    setSelectedDayNum(null);
+  };
+
+  const computeCalendarDays = () => {
+    const daysInCurrent = getDaysInMonth(viewYear, viewMonth);
+    const offset = getFirstDayOffset(viewYear, viewMonth);
+
+    const days: { num: string; currentMonth: boolean }[] = [];
+
+    const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+    const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
+    const daysInPrev = getDaysInMonth(prevYear, prevMonth);
+    for (let i = offset - 1; i >= 0; i--) {
+      days.push({ num: String(daysInPrev - i).padStart(2, '0'), currentMonth: false });
+    }
+
+    for (let d = 1; d <= daysInCurrent; d++) {
+      days.push({ num: String(d).padStart(2, '0'), currentMonth: true });
+    }
+
+    const remaining = days.length % 7 === 0 ? 0 : 7 - (days.length % 7);
+    for (let d = 1; d <= remaining; d++) {
+      days.push({ num: String(d).padStart(2, '0'), currentMonth: false });
+    }
+
+    return days;
+  };
+
+  const getEventsForDay = (dayNum: string) => {
+    return scheduleList.filter(e => {
+      if (e.day !== dayNum) return false;
+      // Legacy items without month/year always match the current view month (best effort)
+      const eMonth = e.month ?? viewMonthStr;
+      const eYear = e.year ?? viewYearStr;
+      return eMonth === viewMonthStr && eYear === viewYearStr;
+    });
+  };
+
   const getEventStyle = (color: string) => {
     switch (color) {
-      case 'secondary':
-        return 'bg-[#ffdbcc] text-[#a04100] border-l-2 border-l-[#a04100]';
-      case 'tertiary':
-        return 'bg-[#fe6b00]/15 text-[#a04100] border-l-2 border-l-[#fe6b00]';
-      case 'success':
-        return 'bg-emerald-50 text-emerald-700 border-l-2 border-l-emerald-600';
-      default:
-        return 'bg-[#d8e2ff] text-[#0059bb] border-l-2 border-l-[#0059bb]';
+      case 'secondary': return 'bg-[#ffdbcc] text-[#a04100] border-l-2 border-l-[#a04100]';
+      case 'tertiary':  return 'bg-[#fe6b00]/15 text-[#a04100] border-l-2 border-l-[#fe6b00]';
+      case 'success':   return 'bg-emerald-50 text-emerald-700 border-l-2 border-l-emerald-600';
+      default:          return 'bg-[#d8e2ff] text-[#0059bb] border-l-2 border-l-[#0059bb]';
     }
   };
 
+  const calendarDays = computeCalendarDays();
+  const selectedEvents = selectedDayNum ? getEventsForDay(selectedDayNum) : [];
+
   return (
     <div className="space-y-8 animate-fade-in select-none text-left">
-      
-      {/* Calendar header row */}
+
+      {/* Header */}
       <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h2 className="text-3xl md:text-4xl font-extrabold text-[#181c20] tracking-tight font-display mb-1">
             Training Schedule
           </h2>
-          <p className="text-sm md:text-base text-[#414754] font-medium font-display">
-            June 2026
-          </p>
+          <div className="flex items-center gap-1 mt-1">
+            <button onClick={goToPrevMonth} className="p-1 rounded-lg hover:bg-[#ebeef3] transition-colors cursor-pointer text-[#414754]">
+              <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+            </button>
+            <span className="text-sm font-bold text-[#414754] min-w-36 text-center">
+              {MONTH_NAMES[viewMonth]} {viewYear}
+            </span>
+            <button onClick={goToNextMonth} className="p-1 rounded-lg hover:bg-[#ebeef3] transition-colors cursor-pointer text-[#414754]">
+              <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
+          </div>
         </div>
-        
+
         <div className="flex bg-[#e5e8ee] p-1 rounded-xl text-xs font-bold border border-[#c1c6d7]/10">
           <button className="px-4 py-2 bg-white text-[#0059bb] font-bold rounded-lg shadow-2xs cursor-pointer">
             Monthly
           </button>
-          <button onClick={() => alert("Weekly layout filters scheduled items by hour rows.")} className="px-4 py-2 text-[#414754] hover:text-[#181c20] font-bold rounded-lg cursor-pointer">
+          <button className="px-4 py-2 text-[#414754] hover:text-[#181c20] font-bold rounded-lg cursor-pointer">
             Weekly
           </button>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* Left Column Calendar bento-table */}
-        <div className="lg:col-span-8 bg-white p-5 rounded-3xl border border-[#c1c6d7]/20 shadow-xs space-y-4">
-          
-          {/* Days labels */}
-          <div className="grid grid-cols-7 text-center font-bold text-xs text-[#717786]/80 pb-3 border-b border-[#c1c6d7]/15">
-            <div>MON</div>
-            <div>TUE</div>
-            <div>WED</div>
-            <div>THU</div>
-            <div>FRI</div>
-            <div>SAT</div>
-            <div>SUN</div>
-          </div>
+      {/* Calendar */}
+      <div className="bg-white p-5 rounded-3xl border border-[#c1c6d7]/20 shadow-xs space-y-4">
 
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-1.5">
-            {calendarDays.map((day, idx) => {
-              // Find matching schedule events
-              const dayEvents = scheduleList.filter(e => e.day === day.num && day.currentMonth);
-              
-              return (
-                <div 
-                  key={`${day.num}-${idx}`}
-                  onClick={() => {
-                    if (dayEvents.length > 0) {
-                      alert(`Day June ${day.num} Schedules:\n` + dayEvents.map(e => `• [${e.time}] ${e.title} - ${e.location}`).join('\n'));
-                    } else if (day.currentMonth) {
-                      alert(`No scheduled sport activities for June ${day.num}. Book a facility to write updates!`);
-                    }
-                  }}
-                  className={`h-28 p-2 rounded-xl transition-all border text-left flex flex-col justify-between cursor-pointer ${
-                    day.currentMonth 
-                      ? 'bg-white border-[#c1c6d7]/15 hover:bg-[#f7f9ff]' 
-                      : 'bg-[#f1f4f9]/35 border-transparent opacity-35'
-                  }`}
-                >
-                  <span className={`text-xs font-bold ${day.currentMonth ? 'text-[#181c20]' : 'text-[#717786]'}`}>
-                    {day.num}
-                  </span>
-
-                  {/* Labeled custom indicators */}
-                  <div className="space-y-1 overflow-y-auto max-h-16 pr-0.5">
-                    {dayEvents.map((ev) => (
-                      <div 
-                        key={ev.id}
-                        className={`p-1.5 rounded text-[9px] font-black uppercase tracking-tight leading-tight uppercase ${getEventStyle(ev.color)}`}
-                      >
-                        <div className="truncate font-extrabold">{ev.title}</div>
-                        <div className="text-[7px] opacity-75 truncate">{ev.time.split(' ')[0]}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
+        <div className="grid grid-cols-7 text-center font-bold text-xs text-[#717786]/80 pb-3 border-b border-[#c1c6d7]/15">
+          {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => <div key={d}>{d}</div>)}
         </div>
 
-        {/* Right column sidebar widgets */}
-        <aside className="lg:col-span-4 space-y-6">
-          
-          {/* Highlight Next Event card */}
-          <div className="relative overflow-hidden rounded-3xl bg-white border border-[#c1c6d7]/25 p-5 shadow-sm text-left select-none">
-            <div className="absolute top-0 right-0 w-28 h-28 bg-[#fe6b00]/5 blur-3xl -mr-12 -mt-12"></div>
-            
-            <div className="flex justify-between items-center mb-3">
-              <span className="bg-[#fe6b00] text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full leading-none">
-                Next Event
-              </span>
-              <button className="material-symbols-outlined text-[#717786]/70 cursor-pointer hover:text-[#fe6b00]">
-                more_horiz
-              </button>
-            </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {calendarDays.map((day, idx) => {
+            const dayEvents = getEventsForDay(day.num);
+            const isToday = day.currentMonth && isCurrentMonthView && day.num === todayDayStr;
+            const isSelected = day.currentMonth && day.num === selectedDayNum;
 
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-lg font-black font-display text-[#181c20] leading-tight">Intramural Soccer Finals</h3>
-                <p className="text-xs text-[#414754] font-semibold flex items-center gap-0.5 mt-1 leading-none">
-                  <span className="material-symbols-outlined text-[15px]">location_on</span>
-                  <span>Central Arena, Field B</span>
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5 pt-1">
-                <div className="bg-[#f1f4f9]/45 p-3 rounded-2xl border border-[#c1c6d7]/20 flex flex-col">
-                  <span className="text-[10px] font-extrabold text-[#717786] uppercase leading-none">Date</span>
-                  <span className="text-xs font-black text-[#181c20] mt-1.5">Today, 4:30 PM</span>
-                </div>
-                <div className="bg-[#f1f4f9]/45 p-3 rounded-2xl border border-[#c1c6d7]/20 flex flex-col">
-                  <span className="text-[10px] font-extrabold text-[#717786] uppercase leading-none">Players</span>
-                  <span className="text-xs font-black text-[#181c20] mt-1.5">22 Confirmed</span>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => alert("🗺️ Displaying integrated transit router map: Anggrek Campus ➔ Senayan Central Arena, Field B.")}
-                className="w-full bg-[#0059bb] hover:bg-[#0070ea] text-white font-bold py-3.5 rounded-2xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+            return (
+              <div
+                key={`${day.num}-${idx}`}
+                onClick={() => {
+                  if (!day.currentMonth) return;
+                  setSelectedDayNum(prev => prev === day.num ? null : day.num);
+                }}
+                className={`h-28 p-2 rounded-xl transition-all border text-left flex flex-col justify-between ${
+                  !day.currentMonth
+                    ? 'bg-[#f1f4f9]/35 border-transparent opacity-35 cursor-default'
+                    : isSelected
+                    ? 'bg-[#eff6ff] border-[#0059bb]/30 cursor-pointer'
+                    : 'bg-white border-[#c1c6d7]/15 hover:bg-[#f7f9ff] cursor-pointer'
+                }`}
               >
-                <span className="material-symbols-outlined text-sm leading-none">directions</span>
-                Get Field Directions
+                <span className={`text-xs font-bold leading-none ${
+                  isToday
+                    ? 'w-5 h-5 rounded-full bg-[#0059bb] text-white flex items-center justify-center text-[10px]'
+                    : day.currentMonth ? 'text-[#181c20]' : 'text-[#717786]'
+                }`}>
+                  {day.num}
+                </span>
+
+                <div className="space-y-1 overflow-y-auto max-h-16 pr-0.5">
+                  {dayEvents.map((ev) => (
+                    <div
+                      key={ev.id}
+                      className={`p-1.5 rounded text-[9px] font-black uppercase tracking-tight leading-tight ${getEventStyle(ev.color)}`}
+                    >
+                      <div className="truncate font-extrabold">{ev.title}</div>
+                      <div className="text-[7px] opacity-75 truncate">{ev.time.split(' ')[0]}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Day detail panel */}
+        {selectedDayNum && (
+          <div className="mt-2 p-4 bg-[#f7f9ff] rounded-2xl border border-[#c1c6d7]/20 animate-fade-in">
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="font-bold text-sm text-[#181c20]">
+                {MONTH_NAMES[viewMonth]} {parseInt(selectedDayNum, 10)}
+                {selectedEvents.length > 0
+                  ? ` — ${selectedEvents.length} event${selectedEvents.length > 1 ? 's' : ''}`
+                  : ' — No events'}
+              </h4>
+              <button onClick={() => setSelectedDayNum(null)} className="text-[#717786] hover:text-[#181c20] cursor-pointer">
+                <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
+            {selectedEvents.length > 0 ? (
+              <div className="space-y-2">
+                {selectedEvents.map(ev => (
+                  <div key={ev.id} className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-3 ${getEventStyle(ev.color)}`}>
+                    <span className="material-symbols-outlined text-[16px]">schedule</span>
+                    <div>
+                      <p className="font-bold">{ev.title}</p>
+                      <p className="opacity-75">{ev.time} • {ev.location}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[#717786] font-medium">No sport activities scheduled. Book a facility or join a session to add events!</p>
+            )}
           </div>
-
-        </aside>
-
+        )}
       </div>
-
     </div>
   );
 }

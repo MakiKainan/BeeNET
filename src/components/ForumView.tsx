@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ForumPost, UserProfile } from '../types';
+import { ForumPost, UserProfile, Toast } from '../types';
 
 interface ForumViewProps {
   activeUser: UserProfile;
@@ -8,6 +8,8 @@ interface ForumViewProps {
   onSelectPost: (post: ForumPost) => void;
   onOpenCreateDiscussion: () => void;
   onVotePost: (postId: string, direction: 'up' | 'down') => void;
+  onShowToast: (message: string, type?: Toast['type']) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
 export default function ForumView({
@@ -16,7 +18,9 @@ export default function ForumView({
   searchQuery,
   onSelectPost,
   onOpenCreateDiscussion,
-  onVotePost
+  onVotePost,
+  onShowToast,
+  onDeletePost
 }: ForumViewProps) {
   
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Hobby Talks' | 'Training Tips'>('All');
@@ -208,9 +212,25 @@ export default function ForumView({
                       </div>
                       <span className="text-xs font-bold text-[#414754]">{post.author}</span>
                       <span className="text-[10px] text-[#717786]">{post.timeAgo}</span>
-                      <span className="ml-auto bg-[#f1f4f9] text-[#717786] px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider">
-                        {post.tag}
-                      </span>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        {activeUser.department === 'Admin' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Are you sure you want to delete this forum post?')) {
+                                onDeletePost?.(post.id);
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 flex items-center justify-center cursor-pointer transition-colors z-20 border-none bg-transparent"
+                            title="Delete Post"
+                          >
+                            <span className="material-symbols-outlined text-sm leading-none">delete</span>
+                          </button>
+                        )}
+                        <span className="bg-[#f1f4f9] text-[#717786] px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider">
+                          {post.tag}
+                        </span>
+                      </div>
                     </div>
 
                     <h4 className="text-base font-bold text-[#181c20] group-hover:text-[#0059bb] transition-colors line-clamp-2">
@@ -237,7 +257,7 @@ export default function ForumView({
                         onClick={(e) => {
                           e.stopPropagation();
                           navigator.clipboard.writeText(`BeeNET forum post: ${post.title}`);
-                          alert("Link discussion copied!");
+                          onShowToast('Link copied to clipboard!', 'info');
                         }}
                         className="flex items-center gap-1.5 hover:text-[#0059bb] transition-colors cursor-pointer"
                       >
@@ -247,7 +267,7 @@ export default function ForumView({
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          alert("Saved discussion to your offline library.");
+                          onShowToast('Saved discussion to your library!', 'success');
                         }}
                         className="flex items-center gap-1.5 hover:text-[#a04100] transition-colors cursor-pointer"
                       >
@@ -304,7 +324,7 @@ export default function ForumView({
               {["#Basketball", "#SummerTraining", "#Yoga", "#FreshmanSports", "#Diet"].map((tag) => (
                 <span 
                   key={tag}
-                  onClick={() => alert(`filtering posts tagged ${tag}`)}
+                  onClick={() => onShowToast(`Tag filter for ${tag} — coming soon!`, 'info')}
                   className="px-3 py-1 bg-[#f1f4f9] text-[#414754] rounded-full text-xs font-semibold hover:bg-[#0059bb] hover:text-white transition-all cursor-pointer border border-[#c1c6d7]/10"
                 >
                   {tag}

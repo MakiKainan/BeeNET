@@ -62,14 +62,23 @@ export interface Task {
 
 export interface ScheduleItem {
   id: string;
-  day: string; // "01", "05", "06", "09", etc.
+  day: string;    // "01"–"31"
+  month?: string; // "01"–"12", optional for backwards compat
+  year?: string;  // "2026", optional for backwards compat
   title: string;
   location: string;
   color: 'primary' | 'secondary' | 'tertiary' | 'success';
   time: string;
 }
 
+export interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'info' | 'error';
+}
+
 export interface UserProfile {
+  id?: string;
   name: string;
   email: string;
   department: string;
@@ -80,4 +89,5 @@ export interface UserProfile {
   futsalProgress: number;
   basketballProgress: number;
   tennisProgress: number;
+  password?: string;
 }

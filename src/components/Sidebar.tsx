@@ -6,6 +6,7 @@ interface SidebarProps {
   onStartMatch: () => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  onLogout?: () => void;
 }
 
 export default function Sidebar({
@@ -13,7 +14,8 @@ export default function Sidebar({
   onTabChange,
   onStartMatch,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  onLogout
 }: SidebarProps) {
   
   const menuItems = [
@@ -125,6 +127,20 @@ export default function Sidebar({
           >
             <span className="material-symbols-outlined">help</span>
             <span>Support</span>
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={() => {
+              if (onLogout) {
+                onLogout();
+                setMobileOpen(false);
+              }
+            }}
+            className="w-full flex items-center gap-3.5 px-4.5 py-2.5 rounded-xl font-semibold text-sm text-red-600 hover:bg-red-50 select-none transition-colors border-none bg-transparent cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-red-600">logout</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>
